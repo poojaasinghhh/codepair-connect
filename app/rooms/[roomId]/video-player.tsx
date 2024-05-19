@@ -6,11 +6,13 @@ import {
   Call,
   CallControls,
   SpeakerLayout,
+  CallParticipantsList,
   StreamCall,
   StreamTheme,
   StreamVideo,
   StreamVideoClient,
 } from "@stream-io/video-react-sdk";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { generateTokenAction } from "./actions";
@@ -21,7 +23,7 @@ export function CodePairConnect({ room }: { room: Room }) {
   const session = useSession();
   const [client, setClient] = useState<StreamVideoClient | null>(null);
   const [call, setCall] = useState<Call | null>(null);
-
+  const router = useRouter();
   useEffect(() => {
     if (!room) return;
     if (!session.data) {
@@ -32,6 +34,8 @@ export function CodePairConnect({ room }: { room: Room }) {
       apiKey,
       user: {
         id: userId,
+        name: session.data.user.name ?? undefined,
+        image: session.data.user.image ?? undefined,
       },
       tokenProvider: () => generateTokenAction(),
     });
@@ -41,8 +45,10 @@ export function CodePairConnect({ room }: { room: Room }) {
     setCall(call);
 
     return () => {
-      call.leave();
-      client.disconnectUser();
+      call
+        .leave()
+        .then(() => client.disconnectUser())
+        .catch(console.error);
     };
   }, [session, room]);
 
@@ -53,7 +59,12 @@ export function CodePairConnect({ room }: { room: Room }) {
         <StreamTheme>
           <StreamCall call={call}>
             <SpeakerLayout />
-            <CallControls />
+            <CallControls
+              onLeave={() => {
+                router.push("/");
+              }}
+            />
+            <CallParticipantsList onClose={() => undefined} />
           </StreamCall>
         </StreamTheme>
       </StreamVideo>
